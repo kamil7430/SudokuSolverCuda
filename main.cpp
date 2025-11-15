@@ -3,20 +3,21 @@
 #include "ArgsParser.h"
 
 int main(int argc, char** argv) {
-    auto parser = new ArgsParser(argc, argv);
+    const auto parser = new ArgsParser(argc, argv);
 
-    auto errorMessage = parser->validateAndParseArgs();
-    if (errorMessage) {
-        std::cerr << errorMessage;
+    if (const auto errorMessage = parser->validateAndParseArgs()) {
+        std::cerr << "Error: " << errorMessage << std::endl;
+        std::cerr << Consts::USAGE_PATTERN << std::endl;
         delete parser;
         return 1;
     }
-    auto outputFile = parser->getOutputFile();
+    const auto outputFile = parser->getOutputFile();
 
     try {
         Sudoku* sudoku;
         while ((sudoku = parser->getNextSudoku())) {
             // TODO: coś tam z sudoku
+            sudoku->print();
 
             delete sudoku;
         }
