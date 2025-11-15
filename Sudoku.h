@@ -6,7 +6,7 @@
 #define SUDOKUSOLVER_SUDOKU_H
 #include <cstdint>
 
-#include "Consts.h"
+#include "consts.h"
 
 
 class Sudoku {

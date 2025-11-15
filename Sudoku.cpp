@@ -3,8 +3,6 @@
 #include <cassert>
 #include <cstdio>
 
-#include "Consts.h"
-
 Sudoku::Sudoku(const uint64_t rows[Consts::SUDOKU_DIMENSION_SIZE]) {
     for (int i = 0; i < Consts::SUDOKU_DIMENSION_SIZE; i++) {
         this->rows[i] = rows[i];

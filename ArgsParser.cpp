@@ -5,8 +5,6 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "consts.h"
-
 void ArgsParser::throwIfUninitialized() const {
     if (!initialized)
         throw std::logic_error("Parser not initialized!");
