@@ -1,11 +1,8 @@
 cmake_minimum_required(VERSION 4.0)
-project(SudokuSolver)
+project(SudokuSolverC C)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_C_STANDARD 23)
 
-add_executable(SudokuSolver main.cpp
-        ArgsParser.h
-        consts.h
+add_executable(SudokuSolverC main.c
         sudoku.h
-        sudoku.cpp
-        ArgsParser.cpp)
+        args_parser.h)
