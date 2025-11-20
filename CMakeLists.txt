@@ -5,7 +5,8 @@ set(CMAKE_CUDA_STANDARD 20)
 
 add_executable(SudokuSolverCuda main.cu
         sudoku.h
-        args_parser.h)
+        args_parser.h
+        cpu_solver/cpu_solver.h)
 
 set_target_properties(SudokuSolverCuda PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)
