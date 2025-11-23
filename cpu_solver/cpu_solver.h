@@ -45,7 +45,12 @@ int cpuBruteforceSolveSudoku(Sudoku* sudoku, int* solved, int i, int j) {
     if (*solved)
         return 1;
 
-    if (i == 8 && j == 8) {
+    if (j >= SUDOKU_DIMENSION_SIZE) {
+        i++;
+        j = 0;
+    }
+
+    if (i >= SUDOKU_DIMENSION_SIZE) {
         *solved = 1;
         return 1;
     }
@@ -56,33 +61,30 @@ int cpuBruteforceSolveSudoku(Sudoku* sudoku, int* solved, int i, int j) {
             if (getDigitAt(&copy, i, j) == 0) {
                 uint16_t digitsMask = getPossibleDigitsAt(&copy, i, j);
 
-                if (digitsMask == 0)
-                    return -1;
-
                 int digit = 0;
-                do {
+                while (digitsMask > 0) {
                     int shift = __builtin_ffs(digitsMask);
                     digit += shift;
                     digitsMask >>= shift;
 
                     setDigitAndUpdateUsedDigits(&copy, i, j, digit);
                     cpuBruteforceSolveSudoku(&copy, solved, i, j);
-
                     if (*solved) {
                         *sudoku = copy;
                         return 1;
                     }
-                } while (digitsMask > 0);
+                    removeDigitAndUpdateUsedDigits(&copy, i, j, digit);
+                }
+
+                return -1;
             }
         }
         j = 0;
     }
 
-    if (*solved) {
-        *sudoku = copy;
-        return 1;
-    }
-    return -1;
+    *solved = 1;
+    *sudoku = copy;
+    return 1;
 }
 
 #endif //SUDOKUSOLVERCUDA_CPU_SOLVER_H

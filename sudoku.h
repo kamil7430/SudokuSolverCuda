@@ -94,9 +94,24 @@ void updateUsedDigitsAt(Sudoku* sudoku, const uint32_t row, const uint32_t col, 
     *getUsedDigitsInBoxPointer(sudoku, row, col) |= mask;
 }
 
+void removeFromUsedDigitsAt(Sudoku* sudoku, const uint32_t row, const uint32_t col, const uint32_t digit) {
+    assert(row < SUDOKU_DIMENSION_SIZE && col < SUDOKU_DIMENSION_SIZE);
+    assert(digit >= 1 && digit <= 9);
+
+    const uint16_t mask = ~(ONE_BIT_MASK << (digit - 1));
+    sudoku->usedDigitsInRow[row] &= mask;
+    sudoku->usedDigitsInCol[col] &= mask;
+    *getUsedDigitsInBoxPointer(sudoku, row, col) &= mask;
+}
+
 void setDigitAndUpdateUsedDigits(Sudoku* sudoku, const uint32_t row, const uint32_t col, const uint32_t digit) {
     setDigitAt(sudoku, row, col, digit);
     updateUsedDigitsAt(sudoku, row, col, digit);
+}
+
+void removeDigitAndUpdateUsedDigits(Sudoku *sudoku, const uint32_t row, const uint32_t col, const uint32_t digit) {
+    setDigitAt(sudoku, row, col, 0);
+    removeFromUsedDigitsAt(sudoku, row, col, digit);
 }
 
 void printSudoku(const Sudoku* sudoku) {
