@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "args_parser.h"
-#include "cpu_solver/cpu_solver.h"
+#include "cpu_solver/cpu_main.h"
 
 #define USAGE_PATTERN "Arguments syntax: <method> <count> <input> <output>\n"\
                       "method: cpu/gpu\n"\
@@ -19,26 +19,28 @@ int main(const int argc, char** argv) {
     }
     FILE* outputFile = parser.outputFile;
 
-    Sudoku sudoku;
+    Sudoku sudoku, emptySudoku = {};
     int err;
     while ((err = getNextSudoku(&parser, &sudoku)) > 0) {
-        // TODO: coś tam z sudoku
-        puts("-----");
-        printSudoku(&sudoku);
+        int result = -1;
 
-        if (cpuPreprocessSudoku(&sudoku))
-            puts("Sudoku jest sprzeczne!\n");
-
-        int solved = 0;
-        if (int result = cpuBruteforceSolveSudoku(&sudoku, &solved, 0, 0)) {
-            printf("Wynik działania: %d\n", result);
-        }
-        if (int result = validateSudokuSolution(&sudoku)) {
-            printf("Czy rozwiązanie jest prawidłowe: %d\n", result);
-            assert(result == 1);
+        switch (parser.method) {
+            case 'c':
+                result = cpu_main(sudoku);
+                break;
+            case 'g':
+                // TODO: GPU version
+                break;
+            default:
+                fputs("Unknown method type!", stderr);
+                break;
         }
 
-        printSudoku(&sudoku);
+        if (result > 0)
+            printSudoku(&sudoku, outputFile, 0);
+        else
+            // If the sudoku is invalid, save an empty output (consisting of zeros)
+            printSudoku(&emptySudoku, outputFile, 0);
     }
     printGetNextSudokuErrorMessage(err);
 

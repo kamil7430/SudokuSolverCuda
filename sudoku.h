@@ -122,17 +122,21 @@ void removeDigitAndUpdateUsedDigits(Sudoku *sudoku, const uint32_t row, const ui
     removeFromUsedDigitsAt(sudoku, row, col, digit);
 }
 
-void printSudoku(const Sudoku* sudoku) {
+void printSudoku(const Sudoku* sudoku, FILE* stream, int pretty) {
     for (int i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
         for (int j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
             unsigned char digit = getDigitAt(sudoku, i, j) + '0';
-            if (digit == '0')
+            if (pretty && digit == '0')
                 digit = '.';
-            putc(digit, stdout);
-            putc(' ', stdout);
+            putc(digit, stream);
+            if (pretty)
+                putc(' ', stream);
         }
-        putc('\n', stdout);
+        if (pretty)
+            putc('\n', stream);
     }
+    if (!pretty)
+        fputs("\r\n", stream);
 }
 
 #endif //SUDOKUSOLVERCUDA_SUDOKU_H
