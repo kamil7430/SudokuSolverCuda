@@ -2,6 +2,7 @@
 
 #include "args_parser.h"
 #include "cpu_solver/cpu_main.h"
+#include "gpu_solver/gpu_main.cuh"
 
 #define USAGE_PATTERN "Arguments syntax: <method> <count> <input> <output>\n"\
                       "method: cpu/gpu\n"\
@@ -19,7 +20,8 @@ int main(const int argc, char** argv) {
     }
     FILE* outputFile = parser.outputFile;
 
-    Sudoku sudoku, emptySudoku = {};
+    Sudoku sudoku;
+    constexpr Sudoku emptySudoku = {};
     int err;
     while ((err = getNextSudoku(&parser, &sudoku)) > 0) {
         int result = -1;
@@ -29,7 +31,7 @@ int main(const int argc, char** argv) {
                 result = cpu_main(&sudoku);
                 break;
             case 'g':
-                // TODO: GPU version
+                result = gpu_main(&sudoku);
                 break;
             default:
                 fputs("Unknown method type!", stderr);
