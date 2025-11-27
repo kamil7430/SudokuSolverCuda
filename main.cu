@@ -24,6 +24,9 @@ int main(const int argc, char** argv) {
         Sudoku sudoku;
         constexpr Sudoku emptySudoku = {};
         int err;
+
+        clock_t startCpuSolving = clock();
+
         while ((err = getNextSudoku(&parser, &sudoku)) > 0) {
             int result = cpu_main(&sudoku);
 
@@ -34,6 +37,9 @@ int main(const int argc, char** argv) {
                 printSudoku(&emptySudoku, outputFile, 0);
         }
         printGetNextSudokuErrorMessage(err);
+
+        clock_t stopCpuSolving = clock();
+        printf("CPU solving time: %f s\n", (float)(stopCpuSolving - startCpuSolving) / CLOCKS_PER_SEC);
     }
     else if (parser.method == 'g') {
         Sudoku* sudokus = (Sudoku*)malloc(parser.totalSudokuCount * sizeof(Sudoku));

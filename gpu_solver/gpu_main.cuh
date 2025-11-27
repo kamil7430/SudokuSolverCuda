@@ -6,6 +6,7 @@
 #define SUDOKUSOLVERCUDA_GPU_MAIN_CUH
 
 #include "gpu_solver.cuh"
+#include <time.h>
 
 void performFirstThreeStepsOfRecursion(Sudoku* sudoku, Sudoku* outSudoku, int depth, int i, int j, int* offset) {
     if (depth == 3) {
@@ -38,6 +39,8 @@ void performFirstThreeStepsOfRecursion(Sudoku* sudoku, Sudoku* outSudoku, int de
 }
 
 int gpu_main(Sudoku* sudokus, const int sudokuCount) {
+    clock_t preprocessingStart = clock();
+
     for (int i = 0; i < sudokuCount; i++) {
         cpuPreprocessSudoku(&sudokus[i]);
     }
@@ -57,6 +60,23 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
     Sudoku* device_output_sudokus;
     int* device_preprocessed_sudokus_count;
 
+    const int psc_size = sudokuCount * sizeof(int);
+    Sudoku* preprocessed_sudokus = (Sudoku*)malloc(input_sudokus_size);
+    int* preprocessed_sudokus_count = (int*)malloc(psc_size);
+    for (int i = 0; i < sudokuCount; i++) {
+        preprocessed_sudokus_count[i] = 0;
+        performFirstThreeStepsOfRecursion(&sudokus[i], preprocessed_sudokus + i * threadsPerBlock, 0, 0, 0, &preprocessed_sudokus_count[i]);
+        // printf("%d\n", preprocessed_sudokus_count[i]);
+        // for (int j = 0; j < preprocessed_sudokus_count[i]; j++) {
+        //     printSudoku(preprocessed_sudokus + i * threadsPerBlock + j, stdout, 1);
+        //     putc('\n', stdout);
+        // }
+    }
+
+    clock_t preprocessingEnd = clock();
+    printf("CPU preprocessing time: %f s\n", (float)(preprocessingEnd - preprocessingStart) / CLOCKS_PER_SEC);
+    clock_t copyingToDeviceStart = clock();
+
     err = cudaMalloc((void **)&device_input_sudokus, input_sudokus_size);
     if (err != cudaSuccess) {
         fprintf(stderr, "Failed to allocate device input sudokus (error code %s)!\n", cudaGetErrorString(err));
@@ -69,23 +89,10 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
         return 1;
     }
 
-    const int psc_size = sudokuCount * sizeof(int);
     err = cudaMalloc((void **)&device_preprocessed_sudokus_count, psc_size);
     if (err != cudaSuccess) {
         fprintf(stderr, "Failed to allocate device sudoku count (error code %s)!\n", cudaGetErrorString(err));
         return 1;
-    }
-
-    Sudoku* preprocessed_sudokus = (Sudoku*)malloc(input_sudokus_size);
-    int* preprocessed_sudokus_count = (int*)malloc(psc_size);
-    for (int i = 0; i < sudokuCount; i++) {
-        preprocessed_sudokus_count[i] = 0;
-        performFirstThreeStepsOfRecursion(&sudokus[i], preprocessed_sudokus + i * threadsPerBlock, 0, 0, 0, &preprocessed_sudokus_count[i]);
-        // printf("%d\n", preprocessed_sudokus_count[i]);
-        // for (int j = 0; j < preprocessed_sudokus_count[i]; j++) {
-        //     printSudoku(preprocessed_sudokus + i * threadsPerBlock + j, stdout, 1);
-        //     putc('\n', stdout);
-        // }
     }
 
     // Copy the host input sudokus in host memory to the device memory
@@ -102,13 +109,32 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
         return 1;
     }
 
+    clock_t copyingToDeviceEnd = clock();
+    printf("Copying to GPU time: %f s\n", (float)(copyingToDeviceEnd - copyingToDeviceStart) / CLOCKS_PER_SEC);
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
+
     // Launch the CUDA Kernel
     printf("CUDA kernel launch with %d blocks of %d threads\n", blocks, threadsPerBlock);
     oneBlockOneSudokuKernel<<<blocks, threadsPerBlock>>>(device_input_sudokus, sudokuCount, device_output_sudokus, device_preprocessed_sudokus_count);
 
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    printf("Kernel execution time: %f s\n", milliseconds / 1000);
+
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
     err = cudaGetLastError();
     if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to launch oneThreadOneSudokuKernel kernel (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to launch oneBlockOneSudokuKernel kernel (error code %s)!\n", cudaGetErrorString(err));
         return 1;
     }
 
