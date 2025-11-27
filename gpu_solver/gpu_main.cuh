@@ -7,8 +7,34 @@
 
 #include "gpu_solver.cuh"
 
-void performFirstFiveStepsOfRecursion(Sudoku* sudoku, Sudoku* outSudoku) {
+void performFirstThreeStepsOfRecursion(Sudoku* sudoku, Sudoku* outSudoku, int depth, int i, int j, int* offset) {
+    if (depth == 3) {
+        outSudoku[*offset] = *sudoku;
+        (*offset)++;
+        return;
+    }
 
+    for (; i < SUDOKU_DIMENSION_SIZE; i++) {
+        for (; j < SUDOKU_DIMENSION_SIZE; j++) {
+            if (getDigitAt(sudoku, i, j) == 0) {
+                uint16_t digitsMask = getPossibleDigitsAt(sudoku, i, j);
+
+                int digit = 0;
+                while (digitsMask > 0) {
+                    const int shift = __builtin_ffs(digitsMask);
+                    digit += shift;
+                    digitsMask >>= shift;
+
+                    setDigitAndUpdateUsedDigits(sudoku, i, j, digit);
+                    performFirstThreeStepsOfRecursion(sudoku, outSudoku, depth + 1, i, j + 1, offset);
+                    removeDigitAndUpdateUsedDigits(sudoku, i, j, digit);
+                }
+
+                return;
+            }
+        }
+        j = 0;
+    }
 }
 
 int gpu_main(Sudoku* sudokus, const int sudokuCount) {
@@ -21,7 +47,7 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
     cudaError_t err = cudaSuccess;
 
     // Declare kernel parameters
-    constexpr int threadsPerBlock = 128;
+    constexpr int threadsPerBlock = 256;
     const int blocks = sudokuCount;
 
     // Allocate the device input sudokus
@@ -29,6 +55,7 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
     const unsigned int input_sudokus_size = output_sudokus_size * threadsPerBlock;
     Sudoku* device_input_sudokus;
     Sudoku* device_output_sudokus;
+    int* device_preprocessed_sudokus_count;
 
     err = cudaMalloc((void **)&device_input_sudokus, input_sudokus_size);
     if (err != cudaSuccess) {
@@ -42,9 +69,23 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
         return 1;
     }
 
+    const int psc_size = sudokuCount * sizeof(int);
+    err = cudaMalloc((void **)&device_preprocessed_sudokus_count, psc_size);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to allocate device sudoku count (error code %s)!\n", cudaGetErrorString(err));
+        return 1;
+    }
+
     Sudoku* preprocessed_sudokus = (Sudoku*)malloc(input_sudokus_size);
+    int* preprocessed_sudokus_count = (int*)malloc(psc_size);
     for (int i = 0; i < sudokuCount; i++) {
-        performFirstFiveStepsOfRecursion(&sudokus[i], preprocessed_sudokus + i * threadsPerBlock);
+        preprocessed_sudokus_count[i] = 0;
+        performFirstThreeStepsOfRecursion(&sudokus[i], preprocessed_sudokus + i * threadsPerBlock, 0, 0, 0, &preprocessed_sudokus_count[i]);
+        // printf("%d\n", preprocessed_sudokus_count[i]);
+        // for (int j = 0; j < preprocessed_sudokus_count[i]; j++) {
+        //     printSudoku(preprocessed_sudokus + i * threadsPerBlock + j, stdout, 1);
+        //     putc('\n', stdout);
+        // }
     }
 
     // Copy the host input sudokus in host memory to the device memory
@@ -55,9 +96,15 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
         return 1;
     }
 
+    err = cudaMemcpy(device_preprocessed_sudokus_count, preprocessed_sudokus_count, psc_size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to copy sudokus from host to device (error code %s)!\n", cudaGetErrorString(err));
+        return 1;
+    }
+
     // Launch the CUDA Kernel
     printf("CUDA kernel launch with %d blocks of %d threads\n", blocks, threadsPerBlock);
-    oneThreadOneSudokuKernel<<<blocks, threadsPerBlock>>>(device_input_sudokus, sudokuCount, device_output_sudokus);
+    oneBlockOneSudokuKernel<<<blocks, threadsPerBlock>>>(device_input_sudokus, sudokuCount, device_output_sudokus, device_preprocessed_sudokus_count);
 
     err = cudaGetLastError();
     if (err != cudaSuccess) {
@@ -92,6 +139,15 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
         fprintf(stderr, "Failed to free device output sudokus (error code %s)!\n", cudaGetErrorString(err));
         return 1;
     }
+
+    err = cudaFree(device_preprocessed_sudokus_count);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to free device output sudokus (error code %s)!\n", cudaGetErrorString(err));
+        return 1;
+    }
+
+    free(preprocessed_sudokus);
+    free(preprocessed_sudokus_count);
 
     printf("CUDA execution finished!\n");
     return 0;

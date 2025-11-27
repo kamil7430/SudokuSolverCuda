@@ -54,11 +54,12 @@ int main(const int argc, char** argv) {
             return 1;
         }
 
-        gpu_main(sudokus, parser.totalSudokuCount);
-
-        for (int i = 0; i < parser.totalSudokuCount; i++) {
-            if (validateSudokuSolution(&sudokus[i]) < 0) {
-                puts("Invalid solution!\n");
+        if (gpu_main(sudokus, parser.totalSudokuCount) <= 0) {
+            for (int i = 0; i < parser.totalSudokuCount; i++) {
+                if (validateSudokuSolution(&sudokus[i]) < 0) {
+                    puts("Invalid solution!\n");
+                    printSudoku(&sudokus[i], stdout, 1);
+                }
             }
         }
 

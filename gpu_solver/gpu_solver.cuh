@@ -43,20 +43,25 @@ int __device__ gpuPreprocessSudoku(Sudoku* sudoku) {
     return 0;
 }
 
-__global__ void oneThreadOneSudokuKernel(Sudoku *sudokus, const int sudokuCount) {
+__global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, const int sudokuCount, Sudoku* outSudoku, int* preprocessedSudokusCount) {
+    __shared__ volatile int foundSolution;
+
+    if (threadIdx.x == 0) {
+        foundSolution = 0;
+    }
+    __syncthreads();
+
+    const int threadNumber = blockDim.x * blockIdx.x + threadIdx.x;
+    if (threadIdx.x >= preprocessedSudokusCount[blockIdx.x])
+        return;
+    Sudoku sudoku = sudokus[threadNumber];
+
     // Prepare data structures for bruteforce
     // empty_indices format: xxxxyyyy (8 bits):
     // xxxx - row (i)
     // yyyy - col (j)
     uint8_t empty_indices[SUDOKU_BOARD_SIZE] = {};
     uint8_t empty_count = 0; // Length of empty_indices array
-
-    const int threadNumber = blockDim.x * blockIdx.x + threadIdx.x;
-    if (threadNumber >= sudokuCount)
-        return;
-    Sudoku sudoku = sudokus[threadNumber];
-
-    gpuPreprocessSudoku(&sudoku);
 
     // Find all empty cells
     for (uint8_t i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
@@ -71,6 +76,10 @@ __global__ void oneThreadOneSudokuKernel(Sudoku *sudokus, const int sudokuCount)
     // Perform iterative bruteforce
     int stack_idx = 0;
     while (stack_idx >= 0 && stack_idx < empty_count) {
+        // Leave if the solution was already found
+        if (foundSolution)
+            return;
+
         // Take one empty cell from "stack" array
         const uint8_t empty_cell_position = empty_indices[stack_idx];
         const uint8_t row = empty_cell_position >> 4;
@@ -99,11 +108,13 @@ __global__ void oneThreadOneSudokuKernel(Sudoku *sudokus, const int sudokuCount)
     }
 
     // If sudoku is invalid, return an empty sudoku
-    if (stack_idx != empty_count)
-        memset(&sudoku, 0, sizeof(Sudoku));
+    if (stack_idx == empty_count) {
+        if (foundSolution)
+            return;
+        foundSolution = 1;
 
-    // Return solution
-    sudokus[threadNumber] = sudoku;
+        outSudoku[blockIdx.x] = sudoku;
+    }
 
     // printf("Thread #%d finished!\n", threadNumber);
 }
