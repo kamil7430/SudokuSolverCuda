@@ -50,14 +50,14 @@ int main(const int argc, char** argv) {
         printf("CPU solving time: %f s\n", (float)(stopCpuSolving - startCpuSolving) / CLOCKS_PER_SEC);
     }
     else if (parser.method == 'g') {
-        // if (gpu_main(sudokus, parser.totalSudokuCount) <= 0) {
-        //     for (int i = 0; i < parser.totalSudokuCount; i++) {
-        //         if (validateSudokuSolution(&sudokus[i]) < 0) {
-        //             puts("Invalid solution!\n");
-        //             printSudoku(&sudokus[i], stdout, 1);
-        //         }
-        //     }
-        // }
+        if (gpu_main(sudokus, parser.totalSudokuCount) <= 0) {
+            for (int i = 0; i < parser.totalSudokuCount; i++) {
+                if (validateSudokuSolution(&sudokus[i / SUDOKUS_PER_STRUCT], i % SUDOKUS_PER_STRUCT) < 0) {
+                    printf("Invalid solution for %d!\n", i);
+                    printSudoku(&sudokus[i / SUDOKUS_PER_STRUCT], i % SUDOKUS_PER_STRUCT, stdout, 1);
+                }
+            }
+        }
     }
     else {
         puts("Invalid parser method!\n");

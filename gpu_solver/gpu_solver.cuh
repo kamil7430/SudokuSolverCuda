@@ -8,53 +8,54 @@
 #include "../sudoku.h"
 #include <cuda_runtime.h>
 
-int __device__ gpuPreprocessSudoku(Sudoku* sudoku) {
-    for (int i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
-        for (int j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
-            const uint32_t digit = getDigitAt(sudoku, i, j);
-
-            if (digit != 0) {
-                const uint16_t possible = getPossibleDigitsAt(sudoku, i, j);
-                if (possible >> (digit - 1) & ONE_BIT_MASK == 0)
-                    return -1;
-
-                updateUsedDigitsAt(sudoku, i, j, digit);
-            }
-        }
-    }
-
-    int restart = 0;
-    for (int i = 0; i < SUDOKU_DIMENSION_SIZE; i++)
-        for (int j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
-            if (getDigitAt(sudoku, i, j) != 0)
-                continue;
-
-            int digits = getPossibleDigitsAt(sudoku, i, j) & NINE_BIT_MASK;
-
-            if (__popc(digits) == 1) {
-                setDigitAndUpdateUsedDigits(sudoku, i, j, __ffs(digits));
-                restart = 1;
-            }
-        }
-
-    if (restart)
-        return gpuPreprocessSudoku(sudoku);
-
-    return 0;
-}
+// int __device__ gpuPreprocessSudoku(Sudoku* sudoku) {
+//     for (int i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
+//         for (int j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
+//             const uint32_t digit = getDigitAt(sudoku, i, j);
+//
+//             if (digit != 0) {
+//                 const uint16_t possible = getPossibleDigitsAt(sudoku, i, j);
+//                 if (possible >> (digit - 1) & ONE_BIT_MASK == 0)
+//                     return -1;
+//
+//                 updateUsedDigitsAt(sudoku, i, j, digit);
+//             }
+//         }
+//     }
+//
+//     int restart = 0;
+//     for (int i = 0; i < SUDOKU_DIMENSION_SIZE; i++)
+//         for (int j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
+//             if (getDigitAt(sudoku, i, j) != 0)
+//                 continue;
+//
+//             int digits = getPossibleDigitsAt(sudoku, i, j) & NINE_BIT_MASK;
+//
+//             if (__popc(digits) == 1) {
+//                 setDigitAndUpdateUsedDigits(sudoku, i, j, __ffs(digits));
+//                 restart = 1;
+//             }
+//         }
+//
+//     if (restart)
+//         return gpuPreprocessSudoku(sudoku);
+//
+//     return 0;
+// }
 
 __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, const int sudokuCount, Sudoku* outSudoku, int* preprocessedSudokusCount) {
     __shared__ volatile int foundSolution;
 
-    if (threadIdx.x == 0) {
+    const unsigned int sudokuNo = threadIdx.x;
+    if (sudokuNo == 0) {
         foundSolution = 0;
     }
+    if (sudokuNo >= preprocessedSudokusCount[blockIdx.x])
+        return;
+
     __syncthreads();
 
-    const int threadNumber = blockDim.x * blockIdx.x + threadIdx.x;
-    if (threadIdx.x >= preprocessedSudokusCount[blockIdx.x])
-        return;
-    Sudoku sudoku = sudokus[threadNumber];
+    Sudoku* sudoku = &sudokus[blockIdx.x];
 
     // Prepare data structures for bruteforce
     // empty_indices format: xxxxyyyy (8 bits):
@@ -66,7 +67,7 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, const int sudokuCount, 
     // Find all empty cells
     for (uint8_t i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
         for (uint8_t j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
-            if (getDigitAt(&sudoku, i, j) == 0) {
+            if (getDigitAt(sudoku, sudokuNo, i, j) == 0) {
                 empty_indices[empty_count] = (i << 4) | j;
                 empty_count++;
             }
@@ -86,12 +87,12 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, const int sudokuCount, 
         const uint8_t col = empty_cell_position & 0xF;
 
         // Clean up previous iteration (if occurred)
-        const uint8_t previousDigit = getDigitAt(&sudoku, row, col);
+        const uint8_t previousDigit = getDigitAt(sudoku, sudokuNo, row, col);
         if (previousDigit != 0)
-            removeDigitAndUpdateUsedDigits(&sudoku, row, col, previousDigit);
+            removeDigitAndUpdateUsedDigits(sudoku, sudokuNo, row, col, previousDigit);
 
         // Bruteforce every digit
-        uint16_t digitsMask = getPossibleDigitsAt(&sudoku, row, col);
+        uint16_t digitsMask = getPossibleDigitsAt(sudoku, sudokuNo, row, col);
 
         // If it's not first try for this cell, shift the possible digits mask
         digitsMask >>= previousDigit;
@@ -102,7 +103,7 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, const int sudokuCount, 
         } else {
             const int shift = __ffs(digitsMask);
             const int digit = previousDigit + shift;
-            setDigitAndUpdateUsedDigits(&sudoku, row, col, digit);
+            setDigitAndUpdateUsedDigits(sudoku, sudokuNo, row, col, digit);
             stack_idx++;
         }
     }
@@ -113,7 +114,7 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, const int sudokuCount, 
             return;
         foundSolution = 1;
 
-        outSudoku[blockIdx.x] = sudoku;
+        copySudoku(&outSudoku[blockIdx.x / SUDOKUS_PER_STRUCT], blockIdx.x % SUDOKUS_PER_STRUCT, sudoku, sudokuNo);
     }
 
     // printf("Thread #%d finished!\n", threadNumber);

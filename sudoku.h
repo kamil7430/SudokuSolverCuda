@@ -140,4 +140,13 @@ void printSudoku(const Sudoku* sudoku, const uint32_t sudokuNo, FILE* stream, in
         fputs("\r\n", stream);
 }
 
+__host__ __device__ void copySudoku(Sudoku* dst, const uint32_t dstNo, Sudoku* src, const uint32_t srcNo) {
+    memcpy(dst->rows[dstNo], src->rows[srcNo], 6 * sizeof(uint64_t));
+    memcpy(dst->usedDigitsInRow[dstNo], src->usedDigitsInRow[srcNo], 9 * sizeof(uint16_t));
+    memcpy(dst->usedDigitsInCol[dstNo], src->usedDigitsInCol[srcNo], 9 * sizeof(uint16_t));
+    memcpy(dst->usedDigitsInBox[dstNo][0], src->usedDigitsInBox[srcNo][0], 3 * sizeof(uint16_t));
+    memcpy(dst->usedDigitsInBox[dstNo][1], src->usedDigitsInBox[srcNo][1], 3 * sizeof(uint16_t));
+    memcpy(dst->usedDigitsInBox[dstNo][2], src->usedDigitsInBox[srcNo][2], 3 * sizeof(uint16_t));
+}
+
 #endif //SUDOKUSOLVERCUDA_SUDOKU_H
