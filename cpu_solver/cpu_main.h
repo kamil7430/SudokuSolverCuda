@@ -29,8 +29,10 @@ void cpu_main(Sudoku* sudokus, const int sudokuCount) {
                 //     assert(validationResult == 1);
                 // }
             }
-            else
+            else {
+                memset(sudoku->rows[sudokuNo], 0, 6 * sizeof(uint64_t));
                 puts("This sudoku is invalid!");
+            }
         }
 
         // printSudoku(sudoku, sudokuNo, stdout, 1);

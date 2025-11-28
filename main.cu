@@ -63,6 +63,10 @@ int main(const int argc, char** argv) {
         puts("Invalid parser method!\n");
     }
 
+    for (int i = 0; i < parser.totalSudokuCount; i++) {
+        printSudoku(&sudokus[i / SUDOKUS_PER_STRUCT], i % SUDOKUS_PER_STRUCT, outputFile, 0);
+    }
+
     free(sudokus);
     fclose(parser.inputFile);
     fclose(outputFile);
