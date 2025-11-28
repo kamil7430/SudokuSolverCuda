@@ -11,7 +11,7 @@
 // Main function for solving sudokus on CPU
 int cpu_main(Sudoku* sudoku) {
     static int sudokuNo = 1;
-    printf("### Solving sudoku %d ###\n", sudokuNo);
+    // printf("### Solving sudoku %d ###\n", sudokuNo);
     int res = -1;
 
     if (cpuPreprocessSudoku(sudoku))
@@ -22,16 +22,19 @@ int cpu_main(Sudoku* sudoku) {
         const int result = cpuIterativeBruteforceSolveSudoku(sudoku);
 
         if (result > 0) {
-            puts("Sudoku solved!");
+            // puts("Sudoku solved!");
             res = 1;
 
             // if (const int result = validateSudokuSolution(sudoku)) {
             //     printf("Is solution valid: %d\n", result);
-            //     // assert(result == 1);
+            //     // printSudoku(sudoku, stdout, 1);
+            //     assert(result == 1);
             // }
         }
-        else
+        else {
             puts("This sudoku is invalid!");
+            // assert("Invalid sudoku!");
+        }
     }
 
     sudokuNo++;
