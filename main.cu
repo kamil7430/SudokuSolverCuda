@@ -20,61 +20,50 @@ int main(const int argc, char** argv) {
     }
     FILE* outputFile = parser.outputFile;
 
-    if (parser.method == 'c') {
-        Sudoku sudoku;
-        constexpr Sudoku emptySudoku = {};
-        int err;
+    const unsigned int sudokus_size = parser.totalSudokuCount * sizeof(Sudoku);
+    Sudoku* sudokus = (Sudoku*)malloc(sudokus_size);
+    if (sudokus == NULL) {
+        fputs("Failed to allocate host memory with malloc!\n", stderr);
+        fclose(parser.inputFile);
+        fclose(outputFile);
+        return 1;
+    }
 
-        clock_t startCpuSolving = clock();
+    memset(sudokus, 0, sudokus_size);
 
-        while ((err = getNextSudoku(&parser, &sudoku)) > 0) {
-            int result = cpu_main(&sudoku);
-
-            if (result > 0)
-                printSudoku(&sudoku, outputFile, 0);
-            else
-                // If the sudoku is invalid, save an empty output (consisting of zeros)
-                printSudoku(&emptySudoku, outputFile, 0);
-        }
+    int err, id = 0;
+    while ((err = getNextSudoku(&parser, &sudokus[id])) > 0)
+        id++;
+    if (err < 0) {
         printGetNextSudokuErrorMessage(err);
+        fclose(parser.inputFile);
+        fclose(outputFile);
+        return 1;
+    }
 
-        clock_t stopCpuSolving = clock();
+    if (parser.method == 'c') {
+        const clock_t startCpuSolving = clock();
+
+        cpu_main(sudokus, parser.totalSudokuCount);
+
+        const clock_t stopCpuSolving = clock();
         printf("CPU solving time: %f s\n", (float)(stopCpuSolving - startCpuSolving) / CLOCKS_PER_SEC);
     }
     else if (parser.method == 'g') {
-        Sudoku* sudokus = (Sudoku*)malloc(parser.totalSudokuCount * sizeof(Sudoku));
-        if (sudokus == NULL) {
-            fputs("Failed to allocate host memory with malloc!\n", stderr);
-            fclose(parser.inputFile);
-            fclose(outputFile);
-            return 1;
-        }
-
-        int err, id = 0;
-        while ((err = getNextSudoku(&parser, &sudokus[id])) > 0)
-            id++;
-        if (err < 0) {
-            printGetNextSudokuErrorMessage(err);
-            fclose(parser.inputFile);
-            fclose(outputFile);
-            return 1;
-        }
-
         if (gpu_main(sudokus, parser.totalSudokuCount) <= 0) {
             for (int i = 0; i < parser.totalSudokuCount; i++) {
                 if (validateSudokuSolution(&sudokus[i]) < 0) {
-                    puts("Invalid solution!\n");
+                    printf("Invalid solution for %d!\n", i);
                     printSudoku(&sudokus[i], stdout, 1);
                 }
             }
         }
-
-        free(sudokus);
     }
     else {
         puts("Invalid parser method!\n");
     }
 
+    free(sudokus);
     fclose(parser.inputFile);
     fclose(outputFile);
     return 0;

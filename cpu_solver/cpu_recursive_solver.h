@@ -41,6 +41,7 @@ int cpuPreprocessSudoku(Sudoku* sudoku) {
     return 0;
 }
 
+// Obsolete
 int cpuRecursiveBruteforceSolveSudoku(Sudoku* sudoku, int* solved, int i, int j) {
     if (*solved)
         return 1;
