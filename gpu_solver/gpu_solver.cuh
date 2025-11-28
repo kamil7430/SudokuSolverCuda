@@ -9,7 +9,7 @@
 #include <cuda_runtime.h>
 
 __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, Sudoku* outSudoku, int* preprocessedSudokusCount) {
-    __shared__ int foundSolution;
+    __shared__ volatile int foundSolution;
 
     // Initialize the shared variable by the first thread
     if (threadIdx.x == 0) {
@@ -33,6 +33,10 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, Sudoku* outSudoku, int*
     // Perform iterative bruteforce
     int stack_idx = 0;
     do {
+        // Check if another thread have found a solution
+        if (foundSolution)
+            return;
+
         uint8_t row = 0, col = 0;
         if (empty_indices[stack_idx] == 0xFF) {
             // Find a cell with the lowest possible digits count
@@ -90,7 +94,7 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, Sudoku* outSudoku, int*
         if (foundSolution)
             return;
 
-        const int oldVal = atomicExch(&foundSolution, 1);
+        const int oldVal = atomicExch((int*)&foundSolution, 1);
 
         if (oldVal == 0) {
             outSudoku[blockIdx.x] = sudoku;

@@ -3,6 +3,8 @@ project(SudokuSolverCuda CUDA)
 
 set(CMAKE_CUDA_STANDARD 20)
 
+set(CMAKE_CUDA_ARCHITECTURES native)
+
 add_executable(SudokuSolverCuda main.cu
         sudoku.h
         args_parser.h
@@ -20,3 +22,12 @@ target_compile_options(SudokuSolverCuda PRIVATE
             -Xptxas=-v
         >
 )
+
+if(MSVC)
+    target_compile_options(SudokuSolverCuda PRIVATE -Xcompiler "/W4")
+else()
+    target_compile_options(SudokuSolverCuda PRIVATE
+            -Xcompiler -Wall
+            -Xcompiler -Wextra
+    )
+endif()

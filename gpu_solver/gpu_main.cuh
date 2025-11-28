@@ -109,6 +109,13 @@ int gpu_main(Sudoku* sudokus, const int sudokuCount) {
         return 1;
     }
 
+    // Set output memory to zeros to handle contradictory sudoku boards
+    err = cudaMemset(device_output_sudokus, 0, output_sudokus_size);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to set output sudoku device memory (error code %s)!\n", cudaGetErrorString(err));
+        return 1;
+    }
+
     err = cudaMemcpy(device_preprocessed_sudokus_count, preprocessed_sudokus_count, psc_size, cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
         fprintf(stderr, "Failed to copy sudokus from host to device (error code %s)!\n", cudaGetErrorString(err));
