@@ -22,7 +22,7 @@ void performFirstFewStepsOfRecursion(Sudoku* sudoku, Sudoku* outSudoku, int dept
     for (i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
         for (j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
             if (getDigitAt(sudoku, i, j) == 0) {
-                const int possibleDigits = __builtin_popcount(getPossibleDigitsAt(sudoku, i, j));
+                const int possibleDigits = portable_popcount(getPossibleDigitsAt(sudoku, i, j));
                 if (possibleDigits < minPossibleDigits) {
                     minPossibleDigits = possibleDigits;
                     row = i;
@@ -37,7 +37,7 @@ void performFirstFewStepsOfRecursion(Sudoku* sudoku, Sudoku* outSudoku, int dept
     // Make recursive calls for all possible digits
     int digit = 0;
     while (digitsMask > 0) {
-        const int shift = __builtin_ffs(digitsMask);
+        const int shift = portable_ffs(digitsMask);
         digit += shift;
         digitsMask >>= shift;
 

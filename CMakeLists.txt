@@ -11,7 +11,8 @@ add_executable(SudokuSolverCuda main.cu
         cpu_solver/cpu_main.h
         gpu_solver/gpu_main.cuh
         cpu_solver/cpu_iterative_solver.h
-        gpu_solver/gpu_solver.cuh)
+        gpu_solver/gpu_solver.cuh
+        portable_functions.h)
 
 set_target_properties(SudokuSolverCuda PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)

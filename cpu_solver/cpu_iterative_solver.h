@@ -4,6 +4,7 @@
 
 #ifndef SUDOKUSOLVERCUDA_CPU_ITERATIVE_SOLVER_H
 #define SUDOKUSOLVERCUDA_CPU_ITERATIVE_SOLVER_H
+#include "../portable_functions.h"
 #include "../sudoku.h"
 
 int cpuIterativeBruteforceSolveSudoku(Sudoku* sudoku) {
@@ -24,7 +25,7 @@ int cpuIterativeBruteforceSolveSudoku(Sudoku* sudoku) {
             for (int i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
                 for (int j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
                     if (getDigitAt(sudoku, i, j) == 0) {
-                        const int possibleDigits = __builtin_popcount(getPossibleDigitsAt(sudoku, i, j));
+                        const int possibleDigits = portable_popcount(getPossibleDigitsAt(sudoku, i, j));
                         if (possibleDigits < minPossibleDigits) {
                             minPossibleDigits = possibleDigits;
                             row = i;
@@ -61,7 +62,7 @@ int cpuIterativeBruteforceSolveSudoku(Sudoku* sudoku) {
             stack_idx--;
         }
         else {
-            const int shift = __builtin_ffs(digitsMask);
+            const int shift = portable_ffs(digitsMask);
             const int digit = previousDigit + shift;
             setDigitAndUpdateUsedDigits(sudoku, row, col, digit);
             stack_idx++;
@@ -104,8 +105,8 @@ int cpuPreprocessSudoku(Sudoku* sudoku) {
 
             const int digits = getPossibleDigitsAt(sudoku, i, j) & NINE_BIT_MASK;
 
-            if (__builtin_popcount(digits) == 1) {
-                setDigitAndUpdateUsedDigits(sudoku, i, j, __builtin_ffs(digits));
+            if (portable_popcount(digits) == 1) {
+                setDigitAndUpdateUsedDigits(sudoku, i, j, portable_ffs(digits));
                 restart = 1;
             }
         }

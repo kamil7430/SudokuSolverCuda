@@ -44,7 +44,7 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, Sudoku* outSudoku, int*
             for (int i = 0; i < SUDOKU_DIMENSION_SIZE; i++) {
                 for (int j = 0; j < SUDOKU_DIMENSION_SIZE; j++) {
                     if (getDigitAt(&sudoku, i, j) == 0) {
-                        const int possibleDigits = __popc(getPossibleDigitsAt(&sudoku, i, j));
+                        const int possibleDigits = portable_popcount(getPossibleDigitsAt(&sudoku, i, j));
                         if (possibleDigits < minPossibleDigits) {
                             minPossibleDigits = possibleDigits;
                             row = i;
@@ -81,7 +81,7 @@ __global__ void oneBlockOneSudokuKernel(Sudoku *sudokus, Sudoku* outSudoku, int*
             stack_idx--;
         }
         else {
-            const int shift = __ffs(digitsMask);
+            const int shift = portable_ffs(digitsMask);
             const int digit = previousDigit + shift;
             setDigitAndUpdateUsedDigits(&sudoku, row, col, digit);
             stack_idx++;
