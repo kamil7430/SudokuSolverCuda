@@ -135,8 +135,12 @@ void printSudoku(const Sudoku* sudoku, FILE* stream, int pretty) {
         if (pretty)
             putc('\n', stream);
     }
-    if (!pretty)
-        fputs("\r\n", stream);
+    if (!pretty) {
+        #if defined(__GNUC__) || defined(__clang__)
+            putc('\r', stream);
+        #endif
+        putc('\n', stream);
+    }
 }
 
 #endif //SUDOKUSOLVERCUDA_SUDOKU_H
